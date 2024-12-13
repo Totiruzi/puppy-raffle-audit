@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.7.6; // # ? is this the right version?
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -18,7 +18,7 @@ import {Base64} from "lib/base64/base64.sol";
 contract PuppyRaffle is ERC721, Ownable {
     using Address for address payable;
 
-    uint256 public immutable entranceFee;
+    uint256 public immutable entranceFee; // I Follow best practice with naming conversion i.e i_entranceFee for immutable variables
 
     address[] public players;
     uint256 public raffleDuration;
@@ -80,7 +80,7 @@ contract PuppyRaffle is ERC721, Ownable {
         require(msg.value == entranceFee * newPlayers.length, "PuppyRaffle: Must send enough to enter raffle");
         for (uint256 i = 0; i < newPlayers.length; i++) {
             players.push(newPlayers[i]);
-        }
+        } // ? Is this gas efficient?
 
         // Check for duplicates
         for (uint256 i = 0; i < players.length - 1; i++) {
@@ -92,8 +92,8 @@ contract PuppyRaffle is ERC721, Ownable {
     }
 
     /// @param playerIndex the index of the player to refund. You can find it externally by calling `getActivePlayerIndex`
-    /// @dev This function will allow there to be blank spots in the array
-    function refund(uint256 playerIndex) public {
+    /// @dev This function will allow there to be blank spots in the array // ? Statement not clear? 
+    function refund(uint256 playerIndex) public { // ? Possible reentrance attack?
         address playerAddress = players[playerIndex];
         require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
         require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
@@ -170,7 +170,7 @@ contract PuppyRaffle is ERC721, Ownable {
     }
 
     /// @notice this function will return true if the msg.sender is an active player
-    function _isActivePlayer() internal view returns (bool) {
+    function _isActivePlayer() internal view returns (bool) { // ? Unused function
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i] == msg.sender) {
                 return true;
