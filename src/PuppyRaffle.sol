@@ -83,6 +83,7 @@ contract PuppyRaffle is ERC721, Ownable {
         } // ? Is this gas efficient?
 
         // Check for duplicates
+        // @audit DoS attack
         for (uint256 i = 0; i < players.length - 1; i++) {
             for (uint256 j = i + 1; j < players.length; j++) {
                 require(players[i] != players[j], "PuppyRaffle: Duplicate player");
@@ -113,6 +114,8 @@ contract PuppyRaffle is ERC721, Ownable {
                 return i;
             }
         }
+        // q What if player is at index 0
+        // @audit if the player is at index 0, it will return 0 and the player might think they are not active!
         return 0;
     }
 
