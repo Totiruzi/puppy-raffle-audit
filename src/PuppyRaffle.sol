@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6; // # ? is this the right version?
+// @audit-info use of floating pragma is bad!
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -21,6 +22,9 @@ contract PuppyRaffle is ERC721, Ownable {
     uint256 public immutable entranceFee; // I Follow best practice with naming conversion i.e i_entranceFee for immutable variables
 
     address[] public players;
+
+    // e how long the raffle last
+    // @audit-gas this should be immutable
     uint256 public raffleDuration;
     uint256 public raffleStartTime;
     address public previousWinner;
@@ -144,16 +148,27 @@ contract PuppyRaffle is ERC721, Ownable {
         uint256 totalAmountCollected = players.length * entranceFee;
         // q is the 80% correct?
         // q I bet there is an arithmetic error here...
+        // audit-info Magic numbers
+        // uint256 public constant PRIZE_POOL_PERCENTAGE = 80;
+        // uint256 public constant FEE_PERCENTAGE = 20;
+        // uint256 public constant POOL_PRECISION = 100;
         uint256 prizePool = (totalAmountCollected * 80) / 100;
         uint256 fee = (totalAmountCollected * 20) / 100;
         // e this should be the total fees the owner should be able to collect
         // @audit overflow
-        // Fixes: Newer versions of Solidity
+        // Fixes: Newer versions of Solidity, bigger uints
+        // @audit unsafe cast of uint256 to uint64
         totalFees = totalFees + uint64(fee);
 
+        // e when we mint a new poppy NFT, we use the total supply as the tokenId
+        // q where do we increment the tokenId/totalSupply?
         uint256 tokenId = totalSupply();
 
         // We use a different RNG calculate from the winnerIndex to determine rarity
+        // @audit randomness
+
+        // q if our transaction picks a winner and we don't like it.... revert?
+        // q gas war ... // @followup @audit people can revert the TX till they win
         uint256 rarity = uint256(keccak256(abi.encodePacked(msg.sender, block.difficulty))) % 100;
         if (rarity <= COMMON_RARITY) {
             tokenIdToRarity[tokenId] = COMMON_RARITY;
@@ -163,9 +178,13 @@ contract PuppyRaffle is ERC721, Ownable {
             tokenIdToRarity[tokenId] = LEGENDARY_RARITY;
         }
 
-        delete players;
-        raffleStartTime = block.timestamp;
-        previousWinner = winner;
+        delete players; // e resetting the players array
+        raffleStartTime = block.timestamp; // e resetting the raffle start time
+        previousWinner = winner; // vanity doesn't matter much
+
+        // q can we renter somewhere?
+        // q what if the winner is a smart contract with a fallback that will fail?
+        // @audit the winner won't get the money if there callback was messed up!
         (bool success,) = winner.call{value: prizePool}("");
         require(success, "PuppyRaffle: Failed to send prize pool to winner");
         _safeMint(winner, tokenId);
@@ -173,9 +192,15 @@ contract PuppyRaffle is ERC721, Ownable {
 
     /// @notice this function will withdraw the fees to the feeAddress
     function withdrawFees() external {
+        // ...?
+        // q if the protocol has players, someone can't withdraw fees?
+        // @audit is it difficult to withdraw fees if there are players (MVE)
+        // @audit mishandling ETH!!!
         require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
         uint256 feesToWithdraw = totalFees;
         totalFees = 0;
+
+        // q what if the feeAddress is a smart contract with a fallback that will fail?
         (bool success,) = feeAddress.call{value: feesToWithdraw}("");
         require(success, "PuppyRaffle: Failed to withdraw fees");
     }
