@@ -108,3 +108,31 @@ Place the following test into `PuppyRaffleTest.t.sol`.
 ```  
 
 Alternatively, you could use [openZeppelin's `EnumerableSet` library](https://docs.openzeppelin.com/contracts/5.x/api/utils#EnumerableSet).
+
+
+
+## [I-1] Unspecific Solidity Pragma
+
+Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`
+
+<details><summary>1 Found Instances</summary>
+
+
+- Found in src/PuppyRaffle.sol [Line: 2](src/PuppyRaffle.sol#L2)
+
+	```solidity
+	pragma solidity ^0.7.6; // # ? is this the right version?
+	```
+
+</details>
+
+
+### [S-#] TITLE
+
+**Description:** 
+
+**Impact:** 
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
