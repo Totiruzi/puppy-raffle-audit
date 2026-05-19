@@ -127,6 +127,25 @@ Consider using a specific version of Solidity in your contracts instead of a wid
 </details>
 
 
+## [I-2] Incorrect versions of Solidity.
+Configuration
+Check: solc-version
+Severity: Informational
+Confidence: High
+
+solc frequently releases new compiler versions. Using an old version prevents access to new Solidity security checks. We also recommend avoiding complex pragma statement.
+
+**Recommendation**:
+Deploy with a recent version of Solidity at least: 
+
+`0.8.0` 
+with no known severe issues.
+
+Use a simple pragma version that allows any of these versions. Consider using the latest version of Solidity for testing.
+
+Please see [Slither](https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity) documentations for more information.
+
+
 ### [S-#] TITLE
 
 **Description:** 
