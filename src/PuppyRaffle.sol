@@ -25,7 +25,7 @@ contract PuppyRaffle is ERC721, Ownable {
     address[] public players;
 
     // e how long the raffle last
-    // @audit-gas this should be immutable
+    // @audit-gas-written this should be immutable
     uint256 public raffleDuration;
     uint256 public raffleStartTime;
     address public previousWinner;
@@ -40,7 +40,7 @@ contract PuppyRaffle is ERC721, Ownable {
     mapping(uint256 => string) public rarityToName;
 
     // Stats for the common puppy (pug)
-    // @audit-gas should be constant!
+    // @audit-gas-written should be constant!
     string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
     uint256 public constant COMMON_RARITY = 70;
     string private constant COMMON = "common";
@@ -65,7 +65,7 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param _raffleDuration the duration in seconds of the raffle
     constructor(uint256 _entranceFee, address _feeAddress, uint256 _raffleDuration) ERC721("Puppy Raffle", "PR") {
         entranceFee = _entranceFee;
-        // @audit-info check for zero address!
+        // @audit-info-written check for zero address!
         // input validation
         feeAddress = _feeAddress;
         raffleDuration = _raffleDuration;
@@ -95,7 +95,7 @@ contract PuppyRaffle is ERC721, Ownable {
 
         // Check for duplicates
         // @audit DoS attack
-        // @audit-gas uint256 playerLength = players.length;
+        // @audit-gas-written uint256 playerLength = players.length;
         for (uint256 i = 0; i < players.length - 1; i++) {
             for (uint256 j = i + 1; j < players.length; j++) {
                 require(players[i] != players[j], "PuppyRaffle: Duplicate player");

@@ -110,8 +110,38 @@ Place the following test into `PuppyRaffleTest.t.sol`.
 Alternatively, you could use [openZeppelin's `EnumerableSet` library](https://docs.openzeppelin.com/contracts/5.x/api/utils#EnumerableSet).
 
 
+# Gas
 
-## [I-1] Unspecific Solidity Pragma
+### [G-1] Unchanged variables should be declared constant or immutable
+
+Reading from storage is much more expensive that reading from a constant or immutable.
+
+Instances:
+`PuppyRaffle::raffleDuration` should be `immutable`
+`PuppyRaffle::commonImageUri` should be `constant`
+`PuppyRaffle::rareImageUri` should be `constant`
+`PuppyRaffle::legendaryImageUri` should be `constant`
+
+
+### [G-2] Storage variable in a loop should be cached
+
+Everytime you call `players.length you read from storage , as opposed to memory which is much gas efficient.
+
+```diff
++       uint256 playerLength = players.length
+-         for (uint256 i = 0; i < players.length - 1; i++) {
++         for (uint256 i = 0; i < playerLength - 1; i++) {
+-            for (uint256 j = i + 1; j < players.length; j++) {
++             for (uint256 j = i + 1; j < playerLength; j++) {
+                require(players[i] != players[j], "PuppyRaffle: Duplicate player");
+            }
+        }
+
+```
+
+# Informational
+
+### [I-1] Unspecific Solidity Pragma
 
 Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`
 
@@ -127,7 +157,7 @@ Consider using a specific version of Solidity in your contracts instead of a wid
 </details>
 
 
-## [I-2] Incorrect versions of Solidity.
+### [I-2] Incorrect versions of Solidity.
 Configuration
 Check: solc-version
 Severity: Informational
@@ -145,6 +175,27 @@ Use a simple pragma version that allows any of these versions. Consider using th
 
 Please see [Slither](https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity) documentations for more information.
 
+
+### [I-3] Address State Variable Set Without Checks
+
+Check for `address(0)` when assigning values to address state variables.
+
+<details><summary>2 Found Instances</summary>
+
+
+- Found in src/PuppyRaffle.sol [Line: 66](src/PuppyRaffle.sol#L66)
+
+	```solidity
+	        feeAddress = _feeAddress;
+	```
+
+- Found in src/PuppyRaffle.sol [Line: 211](src/PuppyRaffle.sol#L211)
+
+	```solidity
+	        feeAddress = newFeeAddress;
+	```
+
+</details>
 
 ### [S-#] TITLE
 
