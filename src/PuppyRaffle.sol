@@ -107,16 +107,16 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param playerIndex the index of the player to refund. You can find it externally by calling `getActivePlayerIndex`
     /// @dev This function will allow there to be blank spots in the array // ? Statement not clear? 
     function refund(uint256 playerIndex) public { // ? Possible reentrance attack?
-        // @audit MEV
+        // @audit-skipped MEV
         address playerAddress = players[playerIndex];
         require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
         require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
 
-        // @audit Reentrancy
+        // @audit-written Reentrancy
         payable(msg.sender).sendValue(entranceFee);
 
         players[playerIndex] = address(0);
-        // @audit-low
+        // @audit-low-written
         // If an event can be manipulated
         // An event is missing
         // An event is wrong
