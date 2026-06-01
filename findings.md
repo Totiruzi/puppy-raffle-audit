@@ -231,6 +231,38 @@ Place the following test into `PuppyRaffleTest.t.sol`.
 Alternatively, you could use [openZeppelin's `EnumerableSet` library](https://docs.openzeppelin.com/contracts/5.x/api/utils#EnumerableSet).
 
 
+# Low
+
+### [L-1] `PuppyRaffle::getActivePlayerIndex` returns 0 for non-existent players and for players at index 0, causing a player at index 0 to incorrectly think they have not entered the raffle.
+
+**Description:** If a player is in the `PuppyRaffle::players` array at index 0, this will return 0, but according to the natspec, it will also return 0 if the player is not in the array.
+
+```javascript
+    /// @return the index of the player in the array, if they are not active, it returns 0
+    function getActivePlayerIndex(address player) external view returns (uint256) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i] == player) {
+                return i;
+            }
+        }
+        return 0;
+    }
+```
+
+**Impact:** A player at index 0 to incorrectly think they have not entered the raffle, and attempt to enter the raffle again, wasting gas.
+
+**Proof of Concept:**
+
+1. User enters the raffle, they are the first entrant
+2. `PuppyRaffle::getActivePlayerIndex` returns 0
+3. User thinks they have not entered correctly due to the function documentation
+
+**Recommended Mitigation:** the easiest recommendation would be to revert if the player is not in the array instead of returning 0.
+
+You could also reserve the 0th position for any competition, but a better solution might be to return an `int256` where function returns -1 if the player is not active. 
+
+
+
 # Gas
 
 ### [G-1] Unchanged variables should be declared constant or immutable
