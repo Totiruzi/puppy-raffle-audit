@@ -133,7 +133,7 @@ contract PuppyRaffle is ERC721, Ownable {
             }
         }
         // q What if player is at index 0
-        // @audit if the player is at index 0, it will return 0 and the player might think they are not active!
+        // @audit-written if the player is at index 0, it will return 0 and the player might think they are not active!
         return 0;
     }
 
@@ -174,7 +174,7 @@ contract PuppyRaffle is ERC721, Ownable {
         uint256 tokenId = totalSupply();
 
         // We use a different RNG calculate from the winnerIndex to determine rarity
-        // @audit randomness
+        // @audit-written randomness
 
         // q if our transaction picks a winner and we don't like it.... revert?
         // q gas war ... // @followup @audit people can revert the TX till they win
@@ -193,7 +193,7 @@ contract PuppyRaffle is ERC721, Ownable {
 
         // q can we renter somewhere?
         // q what if the winner is a smart contract with a fallback that will fail?
-        // @audit the winner won't get the money if there callback was messed up!
+        // @audit-written the winner won't get the money if there callback was messed up!
         (bool success,) = winner.call{value: prizePool}("");
         require(success, "PuppyRaffle: Failed to send prize pool to winner");
         _safeMint(winner, tokenId);

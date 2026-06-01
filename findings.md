@@ -1,6 +1,5 @@
 ### [H-1] Reentrancy attack in `PuppyRaffle::refund` allows entrant to drain raffle balance
 
-
 **Description:** The `PuppyRaffle::refund` function do not follow CIE (Checks, Effects, Interactions) and has a result, allows participants to drain the contract balance.
 
 In the `PuppyRaffle::refund` function, we first make an external call to `msg.sender` address and only after making the external call do we update the `PuppyRaffle::players` array.
@@ -117,6 +116,24 @@ and this contract as well
 -       emit RaffleRefunded(playerAddress);
     }
 ```
+
+### [H-2] Weak randomness in `PuppyRaffle::selectWinner` allows user to predict or influence the winner and influence or predict the puppy.
+
+**Description:** Hashing the `msg.sender`, `block.timestamp`, `block.difficulty` together creates a predictable final number. A predictable final number is not a good random number. Malicious user can manipulate these values or know them ahead of time to chose the winner of the raffle themselves 
+
+*Note:* This additionally means users could front-run this function and call `PuppyRaffle::refund` if they see they are not the winner. 
+
+**Impact:** Any user can influence the winner oif the raffle, winning the money and selecting the `rarest` puppy. Making the entire raffle worthless as it becomes a gas war as to the winner of the raffle.
+
+**Proof of Concept:**
+
+1. Validators can know ahead of time `block.timestamp` and `block.difficulty` and use that to predict when/how to participate. See the [solidity block on prevrandao](https://soliditydeveloper.com/prevrandao). `block.difficulty` was replaced by prevrandao.
+2. User can mine/manipulate their `msg.sender` value to result in their address being used to generate the winner.
+3. Users can revert their `selectWinner` transaction if they don;t like the winner or resulting puppy.
+
+Using on-chain values  as a randomness seed is a [well-documented attack vector](https://medium.com/better-programming/how-to-generate-truly-random-numbers-in-solidity-and-blockchain-9ced6472dbdf) in the blockchain space.
+
+**Recommended Mitigation:** Consider using a cryptographically provable random number generator such as Chainlink VRF.
 
 
 ### [M-#] Looping through the players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential Denial Of Service (DoS) attack, increasing gas cost for future entrants.
@@ -347,8 +364,19 @@ Check for `address(0)` when assigning values to address state variables.
 	```solidity
 	        feeAddress = newFeeAddress;
 	```
-
 </details>
+
+### [I-4] `PuppyRaffle::selectWinner` does not follow CEI, which is best practice
+
+It does not follow best practice CEI (Checks, Effect, Interaction).
+
+```diff
+-   (bool success,) = winner.call{value: prizePool}("");
+-   require(success, "PuppyRaffle: Failed to send prize pool to winner");
+    _safeMint(winner, tokenId);
++   (bool success,) = winner.call{value: prizePool}("");
++   require(success, "PuppyRaffle: Failed to send prize pool to winner");
+```
 
 ### [S-#] TITLE
 
