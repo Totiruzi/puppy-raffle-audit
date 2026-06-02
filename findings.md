@@ -135,6 +135,23 @@ Using on-chain values  as a randomness seed is a [well-documented attack vector]
 
 **Recommended Mitigation:** Consider using a cryptographically provable random number generator such as Chainlink VRF.
 
+### [H-3] Integer overflow of `PuppyRaffle::totalFees` loses fees
+
+**Description:** In solidity versions prior to `0.8.0` integers where subject to integer overflows.
+
+```javascript
+uint256 myVar = type(uint64).max;
+// 18446744073709551615
+myVar = myVar + 1;
+// myVar will be 0
+```
+
+**Impact:** In `PuppyRaffle::selectWinner`, `totalFees` are accumulated for the `feeAddress` to collect later in `PuppyRaffle::withdrawFees`. However, if `totalFees` variable overflows, the `feeAddress` may not collect the correct amount of fees, leaving fees permanently stuck in the contract.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
+
 
 ### [M-#] Looping through the players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential Denial Of Service (DoS) attack, increasing gas cost for future entrants.
 
@@ -317,15 +334,13 @@ Consider using a specific version of Solidity in your contracts instead of a wid
 
 <details><summary>1 Found Instances</summary>
 
-
 - Found in src/PuppyRaffle.sol [Line: 2](src/PuppyRaffle.sol#L2)
 
 	```solidity
-	pragma solidity ^0.7.6; // # ? is this the right version?
+	    pragma solidity ^0.7.6; // # ? is this the right version?
 	```
 
 </details>
-
 
 ### [I-2] Incorrect versions of Solidity.
 Configuration
@@ -336,9 +351,9 @@ Confidence: High
 solc frequently releases new compiler versions. Using an old version prevents access to new Solidity security checks. We also recommend avoiding complex pragma statement.
 
 **Recommendation**:
-Deploy with a recent version of Solidity at least: 
+Deploy with a recent version of Solidity at least:
 
-`0.8.0` 
+`0.8.0`
 with no known severe issues.
 
 Use a simple pragma version that allows any of these versions. Consider using the latest version of Solidity for testing.
@@ -350,20 +365,20 @@ Please see [Slither](https://github.com/crytic/slither/wiki/Detector-Documentati
 
 Check for `address(0)` when assigning values to address state variables.
 
-<details><summary>2 Found Instances</summary>
-
+<details>
+<summary>2 Found Instances</summary>
 
 - Found in src/PuppyRaffle.sol [Line: 66](src/PuppyRaffle.sol#L66)
 
-	```solidity
-	        feeAddress = _feeAddress;
-	```
+```solidity
+feeAddress = _feeAddress;
+```
 
 - Found in src/PuppyRaffle.sol [Line: 211](src/PuppyRaffle.sol#L211)
 
-	```solidity
-	        feeAddress = newFeeAddress;
-	```
+```solidity
+    feeAddress = newFeeAddress;
+```
 </details>
 
 ### [I-4] `PuppyRaffle::selectWinner` does not follow CEI, which is best practice
@@ -376,6 +391,25 @@ It does not follow best practice CEI (Checks, Effect, Interaction).
     _safeMint(winner, tokenId);
 +   (bool success,) = winner.call{value: prizePool}("");
 +   require(success, "PuppyRaffle: Failed to send prize pool to winner");
+```
+
+### [I-5] Magic Numbers
+
+**Description:** All number literals should be replaced with constants. This makes the code more readable and easier to maintain. Numbers without context are called "magic numbers".
+
+**Recommended Mitigation:** Replace all magic numbers with constants.
+
+```diff
++   uint256 public constant PRIZE_POOL_PERCENTAGE = 80;
++   uint256 public constant FEE_PERCENTAGE = 20;
++   uint256 public constant POOL_PRECISION = 100;
+.
+.
+.
+-   uint256 prizePool = (totalAmountCollected * 80) / 100;
+-   uint256 fee = (totalAmountCollected * 20) / 100;
+    uint256 prizePool = (totalAmountCollected * PRIZE_POOL_PERCENTAGE) / TOTAL_PERCENTAGE;
+    uint256 fee = (totalAmountCollected * FEE_PERCENTAGE) / TOTAL_PERCENTAGE;
 ```
 
 ### [S-#] TITLE

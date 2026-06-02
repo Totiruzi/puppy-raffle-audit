@@ -147,7 +147,7 @@ contract PuppyRaffle is ERC721, Ownable {
         require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
         require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
 
-        // @audit randomness
+        // @audit-written randomness
         // fixes: Chainlink VRF, Commit Reveal Scheme
         uint256 winnerIndex =
             uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
@@ -157,7 +157,7 @@ contract PuppyRaffle is ERC721, Ownable {
         uint256 totalAmountCollected = players.length * entranceFee;
         // q is the 80% correct?
         // q I bet there is an arithmetic error here...
-        // audit-info Magic numbers
+        // audit-info-written Magic numbers
         // uint256 public constant PRIZE_POOL_PERCENTAGE = 80;
         // uint256 public constant FEE_PERCENTAGE = 20;
         // uint256 public constant POOL_PRECISION = 100;

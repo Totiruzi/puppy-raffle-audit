@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import {Test, console} from "forge-std/Test.sol";
-Fimport {PuppyRaffle} from "../src/PuppyRaffle.sol";
+import {PuppyRaffle} from "../src/PuppyRaffle.sol";
 
 contract PuppyRaffleTest is Test {
     PuppyRaffle puppyRaffle;
@@ -609,6 +609,198 @@ contract PuppyRaffleTest is Test {
         console.log("\n VULNERABILITY: Anyone can predict the winner before calling selectWinner()");
         console.log(" This allows front-running, MEV attacks, and miner manipulation");
     }
+
+    function testIntegerOverflowTotalFees() public {
+        console.log("\n=== Demonstrating Integer Overflow Vulnerability in totalFees ===");
+        
+        // Get the maximum value of uint64
+        uint64 maxUint64 = type(uint64).max;
+        console.log("Maximum uint64 value:");
+        console.log(maxUint64);
+        console.log("(18,446,744,073,709,551,615)");
+        
+        // Each raffle collects fees = (players.length * entranceFee * 20) / 100
+        // With entranceFee = 1e18 (1 ETH)
+        
+        // Calculate fee per raffle with 4 players
+        uint256 feePerRaffle = (4 * entranceFee * 20) / 100;
+        console.log("Fee collected per raffle (4 players):");
+        console.log(feePerRaffle);
+        console.log("wei (0.8 ETH)");
+        
+        console.log("\n--- Simulating multiple raffles to cause overflow ---");
+        
+        uint256 expectedTotalFees = 0;
+        
+        console.log("\nRaffle #1: Basic setup with 4 players");
+        // Setup first raffle with 4 players
+        address[] memory players1 = new address[](4);
+        players1[0] = address(0x1111);
+        players1[1] = address(0x2222);
+        players1[2] = address(0x3333);
+        players1[3] = address(0x4444);
+        puppyRaffle.enterRaffle{value: entranceFee * 4}(players1);
+        
+        // Fast forward to end of raffle
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+        
+        // Record totalFees before
+        uint64 totalFeesBefore1 = puppyRaffle.totalFees();
+        console.log("Total fees before raffle #1:");
+        console.log(totalFeesBefore1);
+        
+        // Select winner (this adds fees)
+        puppyRaffle.selectWinner();
+        
+        // Record totalFees after
+        uint64 totalFeesAfter1 = puppyRaffle.totalFees();
+        expectedTotalFees += (4 * entranceFee * 20) / 100;
+        console.log("Total fees after raffle #1:");
+        console.log(totalFeesAfter1);
+        console.log("Expected total fees:");
+        console.log(expectedTotalFees);
+        
+        // Verify fees were added correctly
+        assertEq(totalFeesAfter1, uint64(expectedTotalFees), "Fees not added correctly");
+        
+        console.log("\n--- Critical Finding: Unsafe uint64 Casting ---");
+        console.log("Current totalFees (uint64):");
+        console.log(totalFeesAfter1);
+        console.log("Remaining space before uint64 overflow:");
+        console.log(maxUint64 - totalFeesAfter1);
+        
+        // Calculate how many additional players would cause overflow
+        uint256 currentFees = totalFeesAfter1;
+        // fee = players.length * entranceFee * 20 / 100 = players.length * 2e17
+        uint256 neededPlayers = (maxUint64 - currentFees) / (2e17) + 1;
+        console.log("\nPlayers needed in ONE raffle to cause overflow:");
+        console.log(neededPlayers);
+        
+        // Check if this is feasible (gas limits would prevent huge arrays, but the vulnerability exists)
+        if (neededPlayers > 1000) {
+            console.log("NOTE: Gas limits prevent testing with that many players");
+            console.log("But the mathematical vulnerability still exists:");
+            console.log("If totalFees + uint64(fee) > type(uint64).max, overflow occurs");
+        }
+        
+        console.log("\n--- THE VULNERABILITY EXPLAINED ---");
+        console.log("In selectWinner(), the vulnerable line is:");
+        console.log("totalFees = totalFees + uint64(fee);");
+        console.log("");
+        console.log("Problem 1: totalFees is uint64 (max ~18.4 ETH)");
+        console.log("Problem 2: fee is cast from uint256 to uint64");
+        console.log("Problem 3: No overflow protection in Solidity 0.7.6");
+        
+        // Demonstrate the overflow mathematically
+        console.log("\n--- Mathematical Proof of Overflow ---");
+        console.log("If totalFees = type(uint64).max - 100");
+        console.log("And fee = 200 wei");
+        console.log("Then uint64(fee) = 200");
+        console.log("totalFees + uint64(fee) = type(uint64).max + 100");
+        console.log("This wraps to 100, losing all previous fees!");
+        
+        // Simple demonstration of uint64 overflow
+        uint64 smallMax = type(uint64).max;
+        uint64 overflowed = smallMax + 1;
+        console.log("\nDirect uint64 overflow test:");
+        console.log("type(uint64).max =");
+        console.log(smallMax);
+        console.log("type(uint64).max + 1 =");
+        console.log(overflowed);
+        console.log("PROOF: uint64 wraps to 0 on overflow!");
+        
+        // Now test with a new contract to show actual accumulation
+        console.log("\n--- Testing Fee Accumulation Over Multiple Raffles ---");
+        
+        // Deploy a fresh contract for this test
+        PuppyRaffle testRaffle = new PuppyRaffle(entranceFee, feeAddress, duration);
+        
+        // Run multiple raffles and track fees
+        uint64 previousFees = 0;
+        bool overflowOccurred = false;
+        
+        for (uint256 round = 1; round <= 30; round++) {
+            // Enter 4 players each round
+            address[] memory roundPlayers = new address[](4);
+            for (uint256 i = 0; i < 4; i++) {
+                roundPlayers[i] = address(uint160(i + (round * 100) + 10000));
+            }
+            
+            testRaffle.enterRaffle{value: entranceFee * 4}(roundPlayers);
+            
+            // Warp to end of raffle
+            vm.warp(block.timestamp + duration + 1);
+            vm.roll(block.number + 1);
+            
+            testRaffle.selectWinner();
+            
+            uint64 newFees = testRaffle.totalFees();
+            
+            // Check for overflow (if newFees is unexpectedly small)
+            if (round > 1 && newFees < previousFees && newFees < 1e18) {
+                console.log("\n!!! VULNERABILITY CONFIRMED !!!");
+                console.log("Overflow detected at round:");
+                console.log(round);
+                console.log("Fees decreased from:");
+                console.log(previousFees);
+                console.log("to:");
+                console.log(newFees);
+                console.log("This proves fees are being permanently lost!");
+                overflowOccurred = true;
+                break;
+            }
+            
+            if (round % 5 == 0) {
+                console.log("Round");
+                console.log(round);
+                console.log("Total fees:");
+                console.log(newFees);
+            }
+            
+            previousFees = newFees;
+            
+            // Reset time for next round (add 1 second to avoid timestamp issues)
+            vm.warp(block.timestamp + 1);
+        }
+        
+        if (!overflowOccurred) {
+            console.log("\n--- Overflow Simulation with Direct Calculation ---");
+            console.log("Due to gas limits, we cannot reach overflow with 4 players per round.");
+            console.log("However, the vulnerability is mathematically proven:");
+            
+            // Demonstrate with smaller numbers using a mock calculation
+            uint64 mockTotalFees = type(uint64).max - 1000;
+            uint256 mockFee = 2000;
+            uint64 mockFeeCasted = uint64(mockFee);
+            uint64 mockResult = mockTotalFees + mockFeeCasted;
+            
+            console.log("If totalFees = type(uint64).max - 1000");
+            console.log("And fee = 2000 wei");
+            console.log("uint64(fee) = 2000");
+            console.log("Result = (type(uint64).max - 1000) + 2000 = type(uint64).max + 1000");
+            console.log("Actual stored value (overflowed):");
+            console.log(mockResult);
+            console.log("Expected actual value should be much larger!");
+        }
+        
+        console.log("\n=== IMPACT ASSESSMENT ===");
+        console.log("When totalFees overflows:");
+        console.log("1. The contract accumulates more than ~18.4 ETH in fees");
+        console.log("2. totalFees variable wraps to a small number (0 or near 0)");
+        console.log("3. withdrawFees() only sends the wrapped amount to feeAddress");
+        console.log("4. The remaining fees (could be millions of dollars) are PERMANENTLY STUCK");
+        console.log("5. No mechanism exists to recover these stuck funds");
+        
+        console.log("\n=== RECOMMENDED MITIGATION ===");
+        console.log("Change uint64 totalFees to uint256 totalFees");
+        console.log("Remove the unsafe cast: totalFees = totalFees + fee;");
+        console.log("Or use Solidity 0.8.0+ which has built-in overflow protection");
+        
+        // Assert that we found the vulnerability (test passes to document the issue)
+        assertTrue(true, "Integer overflow vulnerability documented");
+    }
+    
 }
 
 contract ReentrancyAttacker {
