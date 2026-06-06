@@ -409,6 +409,28 @@ But the potential gas saved isn't worth it if we have to recast and this bug exi
 +       totalFees = totalFees + fee;
 ```
 
+
+### [M-3] Smart contract raffle winner without a `receive` or `fallback` function will block the start of a new contest
+
+**Description:** The `PuppyRaffle::selectWinner` function is responsible for resetting the lottery. However, if the winner is a smart contract wallet the rejects payment, the lottery will not be able to restart.
+
+Users could easily call the `selectWinner` and non-wallet entrants could enter, but it could cost a lot due to the duplicate check and the lottery reset could get very challenging.
+
+**Impact:** The `PuppyRaffle::selectWinner` function could revert many times making the rafle reset difficult.
+
+Also true winners will not get payed out and someone else could take their money!
+
+**Proof of Concept:**
+
+1. 10 smart contract wallets enter the lottery without a `fallback` or `receive` function.
+2. The lottery ends.
+3. The `PuppyRaffle::selectWinner` function won't work, even though thr lottery is over!
+
+**Recommended Mitigation:** There are a few options to mitigate this issue.
+
+1. Do not allow smart contract wallet entrant (Not recommended)
+2. Create a mapping of addresses -> payout amounts so winners can pull their funds out themselves with a new `claimPrize` function, putting the owners on the winners to claim the prize.(Recommended).
+
 # Low
 
 ### [L-1] `PuppyRaffle::getActivePlayerIndex` returns 0 for non-existent players and for players at index 0, causing a player at index 0 to incorrectly think they have not entered the raffle.
