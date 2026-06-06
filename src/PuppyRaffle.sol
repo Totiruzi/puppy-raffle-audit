@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6; // # ? is this the right version?
+pragma solidity ^0.8.24; // # ? is this the right version?
 // @audit-written use of floating pragma is bad!
 // @audit-written  why are you using 0.7???
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Base64} from "lib/base64/base64.sol";
 
 /// @title PuppyRaffle
@@ -17,7 +18,7 @@ import {Base64} from "lib/base64/base64.sol";
 /// 3. Users are allowed to get a refund of their ticket & `value` if they call the `refund` function
 /// 4. Every X seconds, the raffle will be able to draw a winner and be minted a random puppy
 /// 5. The owner of the protocol will set a feeAddress to take a cut of the `value`, and the rest of the funds will be sent to the winner of the puppy.
-contract PuppyRaffle is ERC721, Ownable {
+contract PuppyRaffle is ERC721, ERC721Enumerable, Ownable {
     using Address for address payable;
 
     uint256 public immutable entranceFee; // I Follow best practice with naming conversion i.e i_entranceFee for immutable variables
@@ -80,6 +81,31 @@ contract PuppyRaffle is ERC721, Ownable {
         rarityToName[LEGENDARY_RARITY] = LEGENDARY;
     }
 
+
+     // ========== OVERRIDE FUNCTIONS ==========
+    
+    /// @dev See {IERC165-supportsInterface}.
+    // function supportsInterface(bytes4 interfaceId)
+    //     public
+    //     view
+    //     virtual
+    //     override(ERC721, ERC721Enumerable)
+    //     returns (bool)
+    // {
+    //     return super.supportsInterface(interfaceId);
+    // }
+
+    /// @dev Hook that is called before any token transfer.
+    // function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize)
+    //     internal
+    //     virtual
+    //     override(ERC721, ERC721Enumerable)
+    // {
+    //     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+    // }
+
+
+
     /// @notice this is how players enter the raffle
     /// @notice they have to pay the entrance fee * the number of players
     /// @notice duplicate entrants are not allowed
@@ -122,6 +148,8 @@ contract PuppyRaffle is ERC721, Ownable {
         // An event is wrong
         emit RaffleRefunded(playerAddress);
     }
+
+    
 
     /// @notice a way to get the index in the array
     /// @param player the address of a player in the raffle
@@ -239,7 +267,7 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @notice this function will return the URI for the token
     /// @param tokenId the Id of the NFT
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "PuppyRaffle: URI query for nonexistent token");
+         require(_ownerOf(tokenId) != address(0), "PuppyRaffle: URI query for nonexistent token");
 
         uint256 rarity = tokenIdToRarity[tokenId];
         string memory imageURI = rarityToUri[rarity];
