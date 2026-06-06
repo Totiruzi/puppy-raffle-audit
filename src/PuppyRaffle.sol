@@ -231,8 +231,8 @@ contract PuppyRaffle is ERC721, ERC721Enumerable, Ownable {
     function withdrawFees() external {
         // ...?
         // q if the protocol has players, someone can't withdraw fees?
-        // @audit is it difficult to withdraw fees if there are players (MVE)
-        // @audit mishandling ETH!!!
+        // @audit-look-into is it difficult to withdraw fees if there are players (MVE)
+        // @audit-written mishandling ETH!!!
         require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
         uint256 feesToWithdraw = totalFees;
         totalFees = 0;
@@ -246,6 +246,7 @@ contract PuppyRaffle is ERC721, ERC721Enumerable, Ownable {
     /// @param newFeeAddress the new address to send fees to
     function changeFeeAddress(address newFeeAddress) external onlyOwner {
         feeAddress = newFeeAddress;
+        // @audit are we missing events?
         emit FeeAddressChanged(newFeeAddress);
     }
 

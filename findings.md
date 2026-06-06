@@ -578,6 +578,21 @@ It does not follow best practice CEI (Checks, Effect, Interaction).
     uint256 fee = (totalAmountCollected * FEE_PERCENTAGE) / TOTAL_PERCENTAGE;
 ```
 
+### [I-6] _isActivePlayer is never used and should be removed
+
+**Description:** The function `PuppyRaffle::_isActivePlayer` is never used and should be removed.
+
+```diff
+-    function _isActivePlayer() internal view returns (bool) {
+-        for (uint256 i = 0; i < players.length; i++) {
+-            if (players[i] == msg.sender) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+```
+
 ### [S-#] TITLE
 
 **Description:** 

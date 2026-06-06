@@ -650,11 +650,11 @@ https://swcregistry.io/docs/SWC-103/
 + pragma solidity 0.7.6;
 ```
 
-### [I-2] Magic Numbers 
+### [I-2] Magic Numbers
 
 **Description:** All number literals should be replaced with constants. This makes the code more readable and easier to maintain. Numbers without context are called "magic numbers".
 
-**Recommended Mitigation:** Replace all magic numbers with constants. 
+**Recommended Mitigation:** Replace all magic numbers with constants.
 
 ```diff
 +       uint256 public constant PRIZE_POOL_PERCENTAGE = 80;
