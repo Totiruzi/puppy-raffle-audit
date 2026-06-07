@@ -5,7 +5,7 @@
 In the `PuppyRaffle::refund` function, we first make an external call to `msg.sender` address and only after making the external call do we update the `PuppyRaffle::players` array.
 
 ```javascript
-    function refund(uint256 playerIndex) public { 
+    function refund(uint256 playerIndex) public {
         address playerAddress = players[playerIndex];
         require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
         require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
@@ -17,7 +17,7 @@ In the `PuppyRaffle::refund` function, we first make an external call to `msg.se
     }
 ```
 
-A player who has entered the raffle could have a `fallback`/`receive` function that calls the `PuppyRaffle::refund` function again and claim another refund. This could continue the cycle until the contract fund is drained. 
+A player who has entered the raffle could have a `fallback`/`receive` function that calls the `PuppyRaffle::refund` function again and claim another refund. This could continue the cycle until the contract fund is drained.
 
 **Impact:** All fees paid by raffle entrants could be stolen by malicious participant.
 
@@ -99,6 +99,7 @@ and this contract as well
         }
     }
 ```
+
 </details>
 
 **Recommended Mitigation:** To prevent this , we should have the `PuppyRaffle:refund` function update the `players` array first before making the external call. Additionally, we should move the event emission up as well.
@@ -119,9 +120,9 @@ and this contract as well
 
 ### [H-2] Weak randomness in `PuppyRaffle::selectWinner` allows user to predict or influence the winner and influence or predict the puppy.
 
-**Description:** Hashing the `msg.sender`, `block.timestamp`, `block.difficulty` together creates a predictable final number. A predictable final number is not a good random number. Malicious user can manipulate these values or know them ahead of time to chose the winner of the raffle themselves 
+**Description:** Hashing the `msg.sender`, `block.timestamp`, `block.difficulty` together creates a predictable final number. A predictable final number is not a good random number. Malicious user can manipulate these values or know them ahead of time to chose the winner of the raffle themselves
 
-*Note:* This additionally means users could front-run this function and call `PuppyRaffle::refund` if they see they are not the winner. 
+_Note:_ This additionally means users could front-run this function and call `PuppyRaffle::refund` if they see they are not the winner.
 
 **Impact:** Any user can influence the winner oif the raffle, winning the money and selecting the `rarest` puppy. Making the entire raffle worthless as it becomes a gas war as to the winner of the raffle.
 
@@ -131,7 +132,7 @@ and this contract as well
 2. User can mine/manipulate their `msg.sender` value to result in their address being used to generate the winner.
 3. Users can revert their `selectWinner` transaction if they don;t like the winner or resulting puppy.
 
-Using on-chain values  as a randomness seed is a [well-documented attack vector](https://medium.com/better-programming/how-to-generate-truly-random-numbers-in-solidity-and-blockchain-9ced6472dbdf) in the blockchain space.
+Using on-chain values as a randomness seed is a [well-documented attack vector](https://medium.com/better-programming/how-to-generate-truly-random-numbers-in-solidity-and-blockchain-9ced6472dbdf) in the blockchain space.
 
 **Recommended Mitigation:** Consider using a cryptographically provable random number generator such as Chainlink VRF.
 
@@ -148,10 +149,12 @@ myVar = myVar + 1;
 
 **Impact:** In `PuppyRaffle::selectWinner`, `totalFees` are accumulated for the `feeAddress` to collect later in `PuppyRaffle::withdrawFees`. However, if `totalFees` variable overflows, the `feeAddress` may not collect the correct amount of fees, leaving fees permanently stuck in the contract.
 
-**Proof of Concept:** 
+**Proof of Concept:**
+
 1. We first conclude a raffle of 4 players to collect some fees.
 2. We then have 89 additional players enter a new raffle, and we conclude that raffle as well.
 3. `totalFees` will be:
+
 ```javascript
 totalFees = totalFees + uint64(fee);
 // substituted
@@ -159,12 +162,15 @@ totalFees = 800000000000000000 + 17800000000000000000;
 // due to overflow, the following is now the case
 totalFees = 153255926290448384;
 ```
+
 4. You will now not be able to withdraw, due to this line in `PuppyRaffle::withdrawFees`:
+
 ```javascript
-require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
+require(address(this).balance ==
+  uint256(totalFees), "PuppyRaffle: There are currently players active!");
 ```
 
-Although you could use `selfdestruct` to send ETH to this contract in order for the values to match and withdraw the fees, this is clearly not what the protocol is intended to do. 
+Although you could use `selfdestruct` to send ETH to this contract in order for the values to match and withdraw the fees, this is clearly not what the protocol is intended to do.
 
 <details>
 <summary>Proof Of Code</summary>
@@ -204,18 +210,19 @@ function testTotalFeesOverflow() public playersEntered {
         puppyRaffle.withdrawFees();
     }
 ```
+
 </details>
 
 **Recommended Mitigation:** There are a few recommended mitigations here.
 
 1. Use a newer version of Solidity that does not allow integer overflows by default.
 
-```diff 
+```diff
 - pragma solidity ^0.7.6;
 + pragma solidity ^0.8.18;
 ```
 
-Alternatively, if you want to use an older version of Solidity, you can use a library like OpenZeppelin's `SafeMath` to prevent integer overflows. 
+Alternatively, if you want to use an older version of Solidity, you can use a library like OpenZeppelin's `SafeMath` to prevent integer overflows.
 
 2. Use a `uint256` instead of a `uint64` for `totalFees`.
 
@@ -231,7 +238,6 @@ Alternatively, if you want to use an older version of Solidity, you can use a li
 ```
 
 There are more attack vectors with the final require, so we recommend remove it regardless.
-
 
 ### [M-1] Looping through the players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential Denial Of Service (DoS) attack, increasing gas cost for future entrants.
 
@@ -253,6 +259,7 @@ An attacker might make the `PuppyRaffle::entrants` array so big, that no one els
 **Proof of Concept:**
 
 If we have 2 sets of 100 players enter the raffle, the gas cost will be such:
+
 - 1st 100 players: ~6503275 gas
 - 2nd 100 players: ~18995515 gas
 
@@ -299,9 +306,11 @@ Place the following test into `PuppyRaffleTest.t.sol`.
         assert(gasUsedFirst < gasUsedSecond);
     }
 ```
+
 </details>
 
 **Recommended Mitigation:** There are a few recommendations.
+
 1. Consider allowing duplicates. Users can make new wallets addresses anyways, so a duplicate check does not prevent the same person from entering multiple time, only the same wallet address.
 2. Consider using a mapping to check for duplicates. This will allow constant time lookup whether a user has already entered.
 
@@ -329,7 +338,7 @@ Place the following test into `PuppyRaffleTest.t.sol`.
 -            }
 -        }
         emit RaffleEnter(newPlayers);
-    } 
+    }
 .
 .
 .
@@ -340,14 +349,13 @@ Place the following test into `PuppyRaffleTest.t.sol`.
         .
         .
     }
-```  
+```
 
 Alternatively, you could use [openZeppelin's `EnumerableSet` library](https://docs.openzeppelin.com/contracts/5.x/api/utils#EnumerableSet).
 
-
 ### [M-2] Unsafe cast of `PuppyRaffle::fee` loses fees
 
-**Description:** In `PuppyRaffle::selectWinner` their is a type cast of a `uint256` to a `uint64`. This is an unsafe cast, and if the `uint256` is larger than `type(uint64).max`, the value will be truncated. 
+**Description:** In `PuppyRaffle::selectWinner` their is a type cast of a `uint256` to a `uint64`. This is an unsafe cast, and if the `uint256` is larger than `type(uint64).max`, the value will be truncated.
 
 ```javascript
     function selectWinner() external {
@@ -364,11 +372,11 @@ Alternatively, you could use [openZeppelin's `EnumerableSet` library](https://do
     }
 ```
 
-The max value of a `uint64` is `18446744073709551615`. In terms of ETH, this is only ~`18` ETH. Meaning, if more than 18ETH of fees are collected, the `fee` casting will truncate the value. 
+The max value of a `uint64` is `18446744073709551615`. In terms of ETH, this is only ~`18` ETH. Meaning, if more than 18ETH of fees are collected, the `fee` casting will truncate the value.
 
 **Impact:** This means the `feeAddress` will not collect the correct amount of fees, leaving fees permanently stuck in the contract.
 
-**Proof of Concept:** 
+**Proof of Concept:**
 
 1. A raffle proceeds with a little more than 18 ETH worth of fees collected
 2. The line that casts the `fee` as a `uint64` hits
@@ -388,6 +396,7 @@ uint64(fee)
 ```javascript
 // We do some storage packing to save gas
 ```
+
 But the potential gas saved isn't worth it if we have to recast and this bug exists.
 
 ```diff
@@ -407,8 +416,8 @@ But the potential gas saved isn't worth it if we have to recast and this bug exi
         uint256 fee = (totalAmountCollected * 20) / 100;
 -       totalFees = totalFees + uint64(fee);
 +       totalFees = totalFees + fee;
+    }
 ```
-
 
 ### [M-3] Smart contract raffle winner without a `receive` or `fallback` function will block the start of a new contest
 
@@ -459,9 +468,7 @@ Also true winners will not get payed out and someone else could take their money
 
 **Recommended Mitigation:** the easiest recommendation would be to revert if the player is not in the array instead of returning 0.
 
-You could also reserve the 0th position for any competition, but a better solution might be to return an `int256` where function returns -1 if the player is not active. 
-
-
+You could also reserve the 0th position for any competition, but a better solution might be to return an `int256` where function returns -1 if the player is not active.
 
 # Gas
 
@@ -474,7 +481,6 @@ Instances:
 `PuppyRaffle::commonImageUri` should be `constant`
 `PuppyRaffle::rareImageUri` should be `constant`
 `PuppyRaffle::legendaryImageUri` should be `constant`
-
 
 ### [G-2] Storage variable in a loop should be cached
 
@@ -502,13 +508,14 @@ Consider using a specific version of Solidity in your contracts instead of a wid
 
 - Found in src/PuppyRaffle.sol [Line: 2](src/PuppyRaffle.sol#L2)
 
-	```solidity
-	    pragma solidity ^0.7.6; // # ? is this the right version?
-	```
+  ```solidity
+      pragma solidity ^0.7.6; // # ? is this the right version?
+  ```
 
 </details>
 
 ### [I-2] Incorrect versions of Solidity.
+
 Configuration
 Check: solc-version
 Severity: Informational
@@ -525,7 +532,6 @@ with no known severe issues.
 Use a simple pragma version that allows any of these versions. Consider using the latest version of Solidity for testing.
 
 Please see [Slither](https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity) documentations for more information.
-
 
 ### [I-3] Address State Variable Set Without Checks
 
@@ -545,6 +551,7 @@ feeAddress = _feeAddress;
 ```solidity
     feeAddress = newFeeAddress;
 ```
+
 </details>
 
 ### [I-4] `PuppyRaffle::selectWinner` does not follow CEI, which is best practice
@@ -578,7 +585,7 @@ It does not follow best practice CEI (Checks, Effect, Interaction).
     uint256 fee = (totalAmountCollected * FEE_PERCENTAGE) / TOTAL_PERCENTAGE;
 ```
 
-### [I-6] _isActivePlayer is never used and should be removed
+### [I-6] \_isActivePlayer is never used and should be removed
 
 **Description:** The function `PuppyRaffle::_isActivePlayer` is never used and should be removed.
 
@@ -595,10 +602,10 @@ It does not follow best practice CEI (Checks, Effect, Interaction).
 
 ### [S-#] TITLE
 
-**Description:** 
+**Description:**
 
-**Impact:** 
+**Impact:**
 
 **Proof of Concept:**
 
-**Recommended Mitigation:** 
+**Recommended Mitigation:**
